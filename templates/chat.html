@@ -338,5 +338,71 @@
             }
         });
         </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var chatContainer = document.getElementById('chatContainer');
+                var receiverId = chatContainer.getAttribute('data-receiver-id');
+                var loggedInUserId = parseInt(chatContainer.getAttribute('data-logged-in-user-id'), 10);
+            
+                function updateChat(message) {
+                    var messageObj = JSON.parse(message);
+                    var messageDiv = document.createElement('div');
+                    messageDiv.className = 'chat-message ' + (messageObj.SenderID == loggedInUserId ? 'sent' : 'received');
+            
+                    var messageContent = document.createElement('div');
+                    messageContent.className = 'message-content';
+            
+                    var senderName = document.createElement('strong');
+                    senderName.className = 'sender-name';
+                    senderName.textContent = messageObj.SenderID == loggedInUserId ? 'You' : messageObj.SenderName;
+                    messageContent.appendChild(senderName);
+            
+                    var messageText = document.createElement('p');
+                    messageText.className = 'message-text';
+                    messageText.textContent = messageObj.Message;
+                    messageContent.appendChild(messageText);
+            
+                    messageDiv.appendChild(messageContent);
+                    chatContainer.appendChild(messageDiv);
+            
+                    // Scroll to bottom
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            
+                if (receiverId && loggedInUserId) {
+                    var socket = new WebSocket('ws://' + window.location.host + '/ws');
+                    
+                    socket.onmessage = function(event) {
+                        updateChat(event.data);
+                    };
+            
+                    socket.onclose = function(event) {
+                        console.log('WebSocket closed. Trying to reconnect...');
+                        setTimeout(function() {
+                            socket = new WebSocket('ws://' + window.location.host + '/ws');
+                        }, 1000);
+                    };
+            
+                    socket.onerror = function(error) {
+                        console.log('WebSocket error: ', error);
+                    };
+            
+                    // Modify your form submission to use WebSocket
+                    document.querySelector('form').onsubmit = function(e) {
+                        e.preventDefault();
+                        var textarea = this.querySelector('textarea');
+                        var message = {
+                            SenderID: loggedInUserId,
+                            ReceiverID: receiverId,
+                            Message: textarea.value
+                        };
+                        socket.send(JSON.stringify(message));
+                        textarea.value = '';
+                    };
+                } else {
+                    console.error('Required data attributes are missing.');
+                }
+            });
+            </script>
 </body>
 </html>

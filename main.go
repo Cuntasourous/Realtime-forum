@@ -10,6 +10,15 @@ import (
 )
 
 func main() {
+	// Initialize the WebSocket hub
+	hub := forum.NewHub()
+	go hub.Run()
+
+	// Add WebSocket endpoint
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		forum.ServeWs(hub, w, r)
+	})
+
 	var err error
 	forum.Db, err = sql.Open("sqlite3", "test_forum.db")
 	if err != nil {
@@ -34,7 +43,7 @@ func main() {
 	http.HandleFunc("/home", forum.Handler)
 	http.HandleFunc("/", forum.HandleRoot)
 	http.HandleFunc("/chat", forum.ChatHandler)
-	http.HandleFunc("/chat-updates", forum.ChatUpdatesHandler)
+	// http.HandleFunc("/chat-updates", forum.ChatUpdatesHandler)
 	http.HandleFunc("/send-message", forum.SendMessageHandler)
 	http.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Debug: Request to %s", r.URL.Path)
