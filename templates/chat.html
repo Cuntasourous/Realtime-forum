@@ -169,7 +169,13 @@
                                     <img src="/static/img/category - pink.png" alt="category-icon">
                                     <h6>{{.Username}}</h6>
                                 </div>
-                                <p>this user is online</p>
+                                <div class="status-indicator {{if .IsOnline}}online{{else}}offline{{end}}">
+                                    {{if .IsOnline}}
+                                        Online
+                                    {{else}}
+                                        Offline
+                                    {{end}}
+                                </div>
                             </div>
                         </a>
                         {{end}}

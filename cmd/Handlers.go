@@ -180,23 +180,71 @@ func getOnlineUsers() ([]OnlineUser, error) {
 	return onlineUsers, nil
 }
 
+// func getAllUsers() ([]OnlineUser, error) {
+// 	var users []OnlineUser
+// 	rows, err := Db.Query("SELECT user_id, username FROM users")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+
+// 	for rows.Next() {
+// 		var user OnlineUser
+// 		if err := rows.Scan(&user.UserID, &user.Username); err != nil {
+// 			return nil, err
+// 		}
+// 		users = append(users, user)
+// 	}
+
+// 	return users, nil
+// }
+
 func getAllUsers() ([]OnlineUser, error) {
-	var users []OnlineUser
-	rows, err := Db.Query("SELECT user_id, username FROM users") // Adjust your query as needed
+	query := `
+        SELECT 
+            user_id,
+            username,
+            CASE 
+                WHEN datetime(last_active) > datetime('now', '-5 minutes') THEN 1
+                ELSE 0
+            END as is_online
+        FROM users
+        WHERE user_id != 1
+        ORDER BY username
+    `
+
+	rows, err := Db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	var users []OnlineUser
 	for rows.Next() {
 		var user OnlineUser
-		if err := rows.Scan(&user.UserID, &user.Username); err != nil {
+		var isOnline int
+		err := rows.Scan(&user.UserID, &user.Username, &isOnline)
+		if err != nil {
 			return nil, err
 		}
+		user.IsOnline = isOnline == 1
 		users = append(users, user)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return users, nil
+}
+
+func updateUserActivity(userID int) error {
+	_, err := Db.Exec(`
+        UPDATE users 
+        SET last_active = datetime('now')
+        WHERE user_id = ?
+    `, userID)
+	return err
 }
 
 func ChatHandler(w http.ResponseWriter, r *http.Request) {
@@ -245,6 +293,13 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error retrieving messages:", err)
 		messages = []ChatMessage{} // Initialize messages as empty slice
+	}
+
+	if userID != 0 {
+		err = updateUserActivity(userID)
+		if err != nil {
+			log.Println("Error updating user activity:", err)
+		}
 	}
 
 	data := struct {

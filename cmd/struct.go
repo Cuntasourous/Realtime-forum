@@ -55,6 +55,7 @@ type PopularCategory struct {
 type OnlineUser struct {
 	UserID   int    `json:"user_id"`
 	Username string `json:"username"`
+	IsOnline bool   `json:"is_online"`
 }
 
 type Session struct {
